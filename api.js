@@ -187,10 +187,21 @@ app.patch("/api/notes/:id", async (req, res) => {
   try {
     const id = new ObjectId(req.params.id);
 
-    const updateData = {
-      ...req.body,
-      updatedAt: new Date(),
-    };
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ message: "No data provided" });
+    }
+
+    const allowedFields = ["title", "content"];
+
+    const updateData = {};
+
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    });
+
+    updateData.updatedAt = new Date();
 
     const result = await getNoteCollection().updateOne(
       { _id: id },
@@ -203,10 +214,6 @@ app.patch("/api/notes/:id", async (req, res) => {
       return res.status(404).json({
         message: "Note not found",
       });
-    }
-
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({ message: "No data provided" });
     }
 
     res.json({
