@@ -14,7 +14,16 @@ async function ConnectDB() {
   console.log("MongoDB connected");
 }
 
-ConnectDB();
+ConnectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 
 const getNoteCollection = () => {
   const db = client.db("notes");
@@ -23,20 +32,31 @@ const getNoteCollection = () => {
 };
 
 app.get("/api/notes", async (req, res) => {
-  const notes = getNoteCollection();
-  const foundNotes = await notes.find();
-  res.json(await foundNotes.toArray());
+  try {
+    const notes = await getNoteCollection()
+      .find()
+      .sort({ createdAt: -1 })
+      .toArray();
+    res.json(notes);
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 app.get("/api/notes/:id", async (req, res) => {
-  const id = new ObjectId(req.params.id);
-  const notes = await getNoteCollection().findOne({ _id: id });
+  try {
+    const id = new ObjectId(req.params.id);
 
-  if (!notes) {
-    return res.status(404).json({ message: "Note not found" });
+    const note = await getNoteCollection().findOne({ _id: id });
+
+    if (!note) {
+      return res.status(404).json({ message: "Note not found" });
+    }
+
+    res.json(note);
+  } catch (error) {
+    res.status(400).json({ message: "Invalid note ID" });
   }
-
-  res.status(200).json(notes);
 });
 
 app.post("/api/notes", async (req, res) => {
@@ -53,7 +73,11 @@ app.post("/api/notes", async (req, res) => {
       createdAt: new Date(),
     });
 
-    res.status(201).json(result);
+    res.status(201).json({
+      id: result.insertedId,
+      title,
+      content,
+    });
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
   }
@@ -73,6 +97,40 @@ app.delete("/api/notes/:id", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`server running on http://localhost:${PORT}`);
+app.put("/api/notes/:id", async (req, res) => {
+  try {
+    const id = new ObjectId(req.params.id);
+    const { title, content } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({
+        message: "title and content required",
+      });
+    }
+
+    const result = await getNoteCollection().updateOne(
+      { _id: id },
+      {
+        $set: {
+          title,
+          content,
+          updatedAt: new Date(),
+        },
+      },
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        message: "Note not found",
+      });
+    }
+
+    res.json({
+      message: "Note updated successfully",
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "Invalid note ID",
+    });
+  }
 });
