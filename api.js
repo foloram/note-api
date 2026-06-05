@@ -205,6 +205,10 @@ app.patch("/api/notes/:id", async (req, res) => {
       });
     }
 
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ message: "No data provided" });
+    }
+
     res.json({
       message: "Note updated successfully",
     });
