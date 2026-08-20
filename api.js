@@ -51,16 +51,40 @@ app.get("/api/notes/:id", async (req, res) => {
 
 app.post("/api/notes", async (req, res) => {
   try {
-    const { title, content } = req.body;
+    const {
+      title = "",
+      content = "",
+      tags = [],
+      favorite = false,
+      pinned = false,
+    } = req.body;
 
-    if (!title || !content) {
-      return res.status(400).json({ message: "title and content required" });
+    if (!Array.isArray(tags)) {
+      return res.status(400).json({
+        message: "tags must be an array",
+      });
+    }
+
+    if (typeof favorite !== "boolean") {
+      return res.status(400).json({
+        message: "favorite must be a boolean",
+      });
+    }
+
+    if (typeof pinned !== "boolean") {
+      return res.status(400).json({
+        message: "pinned must be a boolean",
+      });
     }
 
     const result = await getNoteCollection().insertOne({
       title,
       content,
+      tags,
+      favorite,
+      pinned,
       createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     res.status(201).json({
@@ -95,11 +119,29 @@ app.put("/api/notes/:id", async (req, res) => {
   try {
     const id = new ObjectId(req.params.id);
 
-    const { title, content } = req.body;
+    const {
+      title = "",
+      content = "",
+      tags = [],
+      favorite = false,
+      pinned = false,
+    } = req.body;
 
-    if (!title || !content) {
+    if (!Array.isArray(tags)) {
       return res.status(400).json({
-        message: "title and content required",
+        message: "tags must be an array",
+      });
+    }
+
+    if (typeof favorite !== "boolean") {
+      return res.status(400).json({
+        message: "favorite must be a boolean",
+      });
+    }
+
+    if (typeof pinned !== "boolean") {
+      return res.status(400).json({
+        message: "pinned must be a boolean",
       });
     }
 
@@ -109,6 +151,9 @@ app.put("/api/notes/:id", async (req, res) => {
         $set: {
           title,
           content,
+          tags,
+          favorite,
+          pinned,
           updatedAt: new Date(),
         },
       },
@@ -191,15 +236,45 @@ app.patch("/api/notes/:id", async (req, res) => {
       return res.status(400).json({ message: "No data provided" });
     }
 
-    const allowedFields = ["title", "content"];
-
     const updateData = {};
 
-    allowedFields.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        updateData[field] = req.body[field];
+    if (req.body.title !== undefined) {
+      updateData.title = req.body.title;
+    }
+
+    if (req.body.content !== undefined) {
+      updateData.content = req.body.content;
+    }
+
+    if (req.body.tags !== undefined) {
+      if (!Array.isArray(req.body.tags)) {
+        return res.status(400).json({
+          message: "tags must be an array",
+        });
       }
-    });
+
+      updateData.tags = req.body.tags;
+    }
+
+    if (req.body.favorite !== undefined) {
+      if (typeof req.body.favorite !== "boolean") {
+        return res.status(400).json({
+          message: "favorite must be a boolean",
+        });
+      }
+
+      updateData.favorite = req.body.favorite;
+    }
+
+    if (req.body.pinned !== undefined) {
+      if (typeof req.body.pinned !== "boolean") {
+        return res.status(400).json({
+          message: "pinned must be a boolean",
+        });
+      }
+
+      updateData.pinned = req.body.pinned;
+    }
 
     updateData.updatedAt = new Date();
 
