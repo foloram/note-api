@@ -155,14 +155,17 @@ app.post("/api/notes", async (req, res) => {
       });
     }
 
+    const createdAt = new Date();
+    const updatedAt = new Date();
+
     const result = await getNoteCollection().insertOne({
       title,
       content,
       tags,
       favorite,
       pinned,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt,
+      updatedAt,
     });
 
     res.status(201).json({
@@ -176,7 +179,9 @@ app.post("/api/notes", async (req, res) => {
       updatedAt: updatedAt.toISOString(),
     });
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({
+      message: "Internal server error",
+    });
   }
 });
 
