@@ -169,6 +169,11 @@ app.post("/api/notes", async (req, res) => {
       id: result.insertedId,
       title,
       content,
+      tags,
+      favorite,
+      pinned,
+      createdAt: createdAt.toISOString(),
+      updatedAt: updatedAt.toISOString(),
     });
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
