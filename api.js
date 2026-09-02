@@ -34,19 +34,94 @@ const getNoteCollection = () => {
   return noteCollection;
 };
 
-app.get("/api/notes/:id", async (req, res) => {
+app.get("/api/notes", async (req, res) => {
   try {
-    const id = new ObjectId(req.params.id);
+    const search = String(req.query.search || "");
+    const filter = String(req.query.filter || "");
+    const tag = String(req.query.tag || "");
 
-    const note = await getNoteCollection().findOne({ _id: id });
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit) || 10, 1);
 
-    if (!note) {
-      return res.status(404).json({ message: "Note not found" });
+    const skip = (page - 1) * limit;
+
+    const filters = [];
+
+    if (search.trim()) {
+      filters.push({
+        $or: [
+          {
+            title: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+          {
+            content: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+          {
+            tags: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+        ],
+      });
     }
 
-    res.json(note);
+    if (filter === "favorites") {
+      filters.push({
+        favorite: true,
+      });
+    }
+
+    if (filter === "pinned") {
+      filters.push({
+        pinned: true,
+      });
+    }
+
+    if (tag.trim()) {
+      filters.push({
+        tags: tag,
+      });
+    }
+
+    const mongoFilter =
+      filters.length > 0
+        ? {
+            $and: filters,
+          }
+        : {};
+
+    const notes = await getNoteCollection()
+      .find(mongoFilter)
+      .sort({
+        pinned: -1,
+        updatedAt: -1,
+        createdAt: -1,
+      })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    const total = await getNoteCollection().countDocuments(mongoFilter);
+
+    res.json({
+      notes,
+      page,
+      totalPages: Math.ceil(total / limit),
+      total,
+    });
   } catch (error) {
-    res.status(400).json({ message: "Invalid note ID" });
+    console.error(error);
+
+    res.status(500).json({
+      message: "Internal server error",
+    });
   }
 });
 
